@@ -62,9 +62,6 @@ The **Tool** input on the AI Agent is intentionally left open so the bot can be 
 3. Connect a Google Gemini API credential to the **Google Gemini Chat Model** node.
 4. Activate the workflow.
 
-## Screenshots
-
-*(Add a screenshot of the canvas and a sample WhatsApp conversation here — this sells the project far more than text alone.)*
 
 ## License
 
