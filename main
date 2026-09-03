@@ -1,0 +1,253 @@
+{
+  "name": "AI Customer Support Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "id": "d5d833fa-b163-41aa-a2bf-f877de67f3cc",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        224,
+        1088
+      ],
+      "webhookId": "b1c2d3e4-0001-4000-8000-000000000002"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json.messages?.[0]?.text?.body }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1af00d43-f42e-4272-89ce-6c05f3fb56c4",
+      "name": "Has Text Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        1088
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b3fff3a8-f6d9-415f-b154-3c09170d01d9",
+      "name": "Ignore (no text)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        640,
+        1248
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "customerNumber",
+              "value": "={{ $json.messages[0].from }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "messageText",
+              "value": "={{ $json.messages[0].text.body }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "phoneNumberId",
+              "value": "={{ $json.metadata.phone_number_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fa52816c-b62d-4315-a05b-ac99d951655d",
+      "name": "Prepare Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.messageText }}",
+        "options": {
+          "systemMessage": "You are a friendly, professional customer support agent for [Your Company]. You are messaging with a customer over WhatsApp, so keep replies short and clear (ideally under 300 characters) and avoid markdown formatting since it won't render. Answer questions accurately using only what you actually know. If you don't know the answer, or the request involves billing disputes, cancellations, complaints, or anything sensitive, say so honestly and tell the customer a team member will follow up - never make up information. Keep a warm, patient tone."
+        }
+      },
+      "id": "f87f815c-79d8-40ca-99cb-a3f29b752b9d",
+      "name": "AI Support Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        864,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "2ab95872-809e-476e-b3b9-6fd2746726f8",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        800,
+        1248
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Prepare Message').item.json.customerNumber }}",
+        "contextWindowLength": 10
+      },
+      "id": "f4c6038c-cc98-4bec-bdc8-534f6b4db140",
+      "name": "Conversation Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        992,
+        1248
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('Prepare Message').item.json.phoneNumberId }}",
+        "recipientPhoneNumber": "={{ $('Prepare Message').item.json.customerNumber }}",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "id": "1d8e5be5-95bb-4040-8186-602c4fb07be2",
+      "name": "Send Reply",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1168,
+        1008
+      ],
+      "webhookId": "d1f80dc9-d853-4db7-a9bb-0adddedf2e5f"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Has Text Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Text Message?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignore (no text)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Message": {
+      "main": [
+        [
+          {
+            "node": "AI Support Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Support Agent": {
+      "main": [
+        [
+          {
+            "node": "Send Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Support Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Support Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8ffeedc5-7c4b-4a1d-ab34-2379747acdf5",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "nodeGroups": [],
+  "id": "TJnSdE84509pS1m6",
+  "tags": []
+}
